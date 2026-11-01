@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../models/drawing_point.dart';
+import '../utils/drawing_helper.dart';
 import 'coloring_painter.dart';
 
 class CanvasViewer extends StatefulWidget {
@@ -41,20 +44,22 @@ class _CanvasViewerState extends State<CanvasViewer> {
   Offset _mousePosition = Offset.zero;
 
   void _updateMousePosition(Offset localPosition) {
+    final scenePoint = DrawingHelper.getScenePoint(localPosition, widget.transformationController);
     setState(() {
-      // Convert local viewer position to unscaled scene coordinates for the cursor
-      _mousePosition = widget.transformationController.toScene(localPosition);
+      _mousePosition = scenePoint;
       _isMouseInside = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isHandTool = widget.selectedBrush == 'hand';
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isMouseInside = true),
       onExit: (_) => setState(() => _isMouseInside = false),
       onHover: (details) => _updateMousePosition(details.localPosition),
-      cursor: widget.selectedBrush == 'hand' ? SystemMouseCursors.grab : SystemMouseCursors.none,
+      cursor: isHandTool ? SystemMouseCursors.grab : SystemMouseCursors.none,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -73,12 +78,14 @@ class _CanvasViewerState extends State<CanvasViewer> {
                 transformationController: widget.transformationController,
                 minScale: 1.0,
                 maxScale: 4.0,
-                panEnabled: widget.selectedBrush == 'hand',
+                panEnabled: isHandTool,
                 scaleEnabled: true,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(color: Colors.white),
+
+                    // 1. COLORING PAGE IMAGE SITS AT THE BOTTOM
                     Image.asset(
                       widget.selectedPagePath,
                       fit: BoxFit.contain,
@@ -92,40 +99,53 @@ class _CanvasViewerState extends State<CanvasViewer> {
                         );
                       },
                     ),
+
+                    // 2. DRAWING LAYER SITS ON TOP WITH GESTURES
                     GestureDetector(
-                      onPanStart: widget.selectedBrush == 'hand'
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: isHandTool
                           ? null
                           : (details) {
-                        _updateMousePosition(details.localPosition);
-                        final scenePoint = widget.transformationController.toScene(details.localPosition);
+                        final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                        final localPos = renderBox.globalToLocal(details.globalPosition);
+                        final scenePoint = DrawingHelper.getScenePoint(localPos, widget.transformationController);
+
+                        _updateMousePosition(localPos);
                         widget.onPanStart(scenePoint);
                       },
-                      onPanUpdate: widget.selectedBrush == 'hand'
+                      onPanUpdate: isHandTool
                           ? null
                           : (details) {
-                        _updateMousePosition(details.localPosition);
-                        final scenePoint = widget.transformationController.toScene(details.localPosition);
+                        final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                        final localPos = renderBox.globalToLocal(details.globalPosition);
+                        final scenePoint = DrawingHelper.getScenePoint(localPos, widget.transformationController);
+
+                        _updateMousePosition(localPos);
                         widget.onPanUpdate(scenePoint);
                       },
-                      onPanEnd: widget.selectedBrush == 'hand'
-                          ? null
-                          : (_) => widget.onPanEnd(),
+                      onPanEnd: isHandTool ? null : (_) => widget.onPanEnd(),
+                      onPanCancel: isHandTool ? null : () => widget.onPanEnd(),
                       child: CustomPaint(
                         painter: ColoringPainter(widget.points),
                         size: Size.infinite,
                       ),
                     ),
-                    if (_isMouseInside && widget.selectedBrush != 'hand')
+
+                    // 3. Clean Circular Hover Cursor Preview for all drawing tools
+                    if (_isMouseInside && !isHandTool)
                       IgnorePointer(
                         child: CustomPaint(
                           painter: BrushCursorPainter(
                             position: _mousePosition,
                             size: widget.strokeSize,
                             color: widget.selectedColor,
+                            brushType: widget.selectedBrush,
                           ),
                           size: Size.infinite,
                         ),
                       ),
+
+                    // Logo watermark
                     Positioned(
                       top: 16,
                       left: 16,
@@ -140,7 +160,7 @@ class _CanvasViewerState extends State<CanvasViewer> {
                 ),
               ),
 
-              // Floating Zoom Controls at Bottom Center of Canvas
+              // Floating Zoom Controls
               Positioned(
                 bottom: 16,
                 left: 0,
@@ -203,32 +223,51 @@ class BrushCursorPainter extends CustomPainter {
   final Offset position;
   final double size;
   final Color color;
+  final String brushType;
 
   BrushCursorPainter({
     required this.position,
     required this.size,
     required this.color,
+    required this.brushType,
   });
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
-    final paint = Paint()
-      ..color = color == Colors.white ? Colors.black54 : color.withValues(alpha: 0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    final effectiveColor = color == Colors.white ? Colors.black54 : color;
 
-    canvas.drawCircle(position, size / 2, paint);
+    if (brushType == 'eraser') {
+      final strokePaint = Paint()
+        ..color = Colors.redAccent.withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+      canvas.drawCircle(position, size / 2, strokePaint);
 
-    final fillPaint = Paint()
-      ..color = (color == Colors.white ? Colors.black : color).withValues(alpha: 0.2)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(position, size / 2, fillPaint);
+      final fillPaint = Paint()
+        ..color = Colors.redAccent.withValues(alpha: 0.15)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(position, size / 2, fillPaint);
+    } else {
+      // Standard circular brush preview for crayon, marker, pencil, and watercolor
+      final strokePaint = Paint()
+        ..color = effectiveColor.withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      canvas.drawCircle(position, size / 2, strokePaint);
+
+      final fillPaint = Paint()
+        ..color = effectiveColor.withValues(alpha: 0.2)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(position, size / 2, fillPaint);
+    }
   }
 
   @override
   bool shouldRepaint(covariant BrushCursorPainter oldDelegate) {
     return oldDelegate.position != position ||
         oldDelegate.size != size ||
-        oldDelegate.color != color;
+        oldDelegate.color != color ||
+        oldDelegate.brushType != brushType;
   }
 }

@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'models/drawing_point.dart';
+import 'models/color_palette_model.dart'; // <-- Imported Color Palette Model
 import 'data/coloring_pages.dart';
+import 'utils/drawing_helper.dart';
 import 'widgets/thumbnail_sidebar.dart';
 import 'widgets/top_toolbar.dart';
 import 'widgets/color_palette.dart';
 import 'widgets/app_header.dart';
 import 'widgets/canvas_viewer.dart';
+import 'dart:math' as math;
+
 
 void main() {
   runApp(const BellaCanvasApp());
@@ -41,6 +46,7 @@ class _ColoringScreenState extends State<ColoringScreen> {
   bool _isSidebarExpanded = true;
 
   final TransformationController _transformationController = TransformationController();
+  Timer? _holdTimer; // Timer for 3-second hold-to-darken saturation buildup
 
   late String _selectedPagePath;
 
@@ -53,6 +59,7 @@ class _ColoringScreenState extends State<ColoringScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _holdTimer?.cancel();
     super.dispose();
   }
 
@@ -159,19 +166,6 @@ class _ColoringScreenState extends State<ColoringScreen> {
     }
   }
 
-  final List<Color> _colors = [
-    Colors.black,
-    Colors.red,
-    Colors.orange,
-    Colors.amber,
-    Colors.green,
-    Colors.blue,
-    Colors.purple,
-    Colors.pink,
-    Colors.brown,
-    Colors.white,
-  ];
-
   final List<String> _brushes = ['crayon', 'marker', 'pencil', 'watercolor', 'eraser', 'hand'];
   final List<List<DrawingPoint?>> _points = [];
 
@@ -186,11 +180,12 @@ class _ColoringScreenState extends State<ColoringScreen> {
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            // 1. Color Palette on the Left
+            // 1. Color Palette on the Left (Powered by ColorPaletteModel)
             ColorPalette(
-              colors: _colors,
+              colors: ColorPaletteModel.baseColors,
               selectedColor: _selectedColor,
               onColorSelected: (color) => setState(() => _selectedColor = color),
+              customShadesMap: ColorPaletteModel.shadesMap,
             ),
             const SizedBox(width: 12),
 
@@ -204,7 +199,7 @@ class _ColoringScreenState extends State<ColoringScreen> {
             ),
             const SizedBox(width: 12),
 
-            // 3. Central Canvas Viewing Area (Single Standalone CanvasViewer Widget)
+            // 3. Central Canvas Viewing Area
             Expanded(
               child: Column(
                 children: [
@@ -218,17 +213,36 @@ class _ColoringScreenState extends State<ColoringScreen> {
                       transformationController: _transformationController,
                       onPanStart: (point) {
                         setState(() {
-                          _points.add([DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush)]);
+                          _points.add([DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush, opacity: 0.2)]);
+                        });
+
+                        // 3-second hold-to-darken timer loop (+0.025 every 100ms reaches 1.0 in ~3 seconds)
+                        _holdTimer?.cancel();
+                        _holdTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+                          if (mounted && _points.isNotEmpty && _points.last.isNotEmpty) {
+                            setState(() {
+                              for (var p in _points.last) {
+                                if (p != null) {
+                                  p.opacity = math.min(1.0, p.opacity + 0.025);
+                                }
+                              }
+                            });
+                          }
                         });
                       },
                       onPanUpdate: (point) {
                         setState(() {
-                          _points.last.add(DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush));
+                          if (_points.isNotEmpty) {
+                            _points.last.add(DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush, opacity: 0.2));
+                          }
                         });
                       },
                       onPanEnd: () {
+                        _holdTimer?.cancel();
                         setState(() {
-                          _points.add([]);
+                          if (_points.isNotEmpty && _points.last.isNotEmpty) {
+                            _points.last.add(null);
+                          }
                         });
                       },
                       onZoomIn: _zoomIn,
@@ -243,9 +257,11 @@ class _ColoringScreenState extends State<ColoringScreen> {
                     children: [
                       ElevatedButton.icon(
                         onPressed: () {
+                          _holdTimer?.cancel();
                           setState(() {
                             if (_points.isNotEmpty) {
                               _points.removeLast();
+                              DrawingHelper.clearCache();
                             }
                           });
                         },
@@ -255,7 +271,13 @@ class _ColoringScreenState extends State<ColoringScreen> {
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
-                        onPressed: () => setState(() => _points.clear()),
+                        onPressed: () {
+                          _holdTimer?.cancel();
+                          setState(() {
+                            _points.clear();
+                            DrawingHelper.clearCache();
+                          });
+                        },
                         icon: const Icon(Icons.refresh),
                         label: const Text('Clear All'),
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade400, foregroundColor: Colors.white),
@@ -281,9 +303,11 @@ class _ColoringScreenState extends State<ColoringScreen> {
               isExpanded: _isSidebarExpanded,
               onToggleExpand: () => setState(() => _isSidebarExpanded = !_isSidebarExpanded),
               onPageSelected: (path) {
+                _holdTimer?.cancel();
                 setState(() {
                   _selectedPagePath = path;
                   _points.clear();
+                  DrawingHelper.clearCache();
                   _resetZoom();
                 });
               },

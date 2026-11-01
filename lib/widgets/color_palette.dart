@@ -4,12 +4,14 @@ class ColorPalette extends StatefulWidget {
   final List<Color> colors;
   final Color selectedColor;
   final ValueChanged<Color> onColorSelected;
+  final Map<Color, List<Color>>? customShadesMap; // Added parameter
 
   const ColorPalette({
     super.key,
     required this.colors,
     required this.selectedColor,
     required this.onColorSelected,
+    this.customShadesMap,
   });
 
   @override
@@ -19,16 +21,20 @@ class ColorPalette extends StatefulWidget {
 class _ColorPaletteState extends State<ColorPalette> {
   Color? _activeBaseColor;
 
-  // Generates lighter, base, and darker shades for a given color
+  // Retrieves custom shades if provided, otherwise generates them
   List<Color> _getShades(Color color) {
+    if (widget.customShadesMap != null && widget.customShadesMap!.containsKey(color)) {
+      return widget.customShadesMap![color]!;
+    }
+
     if (color == Colors.white || color == Colors.black) {
       return [color];
     }
     final hsl = HSLColor.fromColor(color);
     return [
-      hsl.withLightness((hsl.lightness + 0.22).clamp(0.0, 1.0)).toColor(), // Lighter tint
-      color, // Base color
-      hsl.withLightness((hsl.lightness - 0.22).clamp(0.0, 1.0)).toColor(), // Darker shade
+      color, // Color 1 (Base)
+      hsl.withLightness((hsl.lightness + 0.22).clamp(0.0, 1.0)).toColor(), // Color 2 (Light)
+      hsl.withLightness((hsl.lightness - 0.22).clamp(0.0, 1.0)).toColor(), // Color 3 (Dark)
     ];
   }
 
@@ -52,7 +58,7 @@ class _ColorPaletteState extends State<ColorPalette> {
 
             return Column(
               children: [
-                // Main Color Circle
+                // Main Color Circle (Base / Color 1)
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -86,8 +92,8 @@ class _ColorPaletteState extends State<ColorPalette> {
                   ),
                 ),
 
-                // Shade Selector Dropdown Underneath (Lighter, Base, Darker)
-                if (isExpanded && shades.length > 1)
+                // Shade Selector Dropdown Underneath (Color 2: Light, Color 3: Dark)
+                if (isExpanded && shades.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(bottom: 6),
                     padding: const EdgeInsets.all(4),

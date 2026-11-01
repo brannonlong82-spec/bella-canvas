@@ -9,8 +9,8 @@ class CanvasViewer extends StatefulWidget {
   final double strokeSize;
   final List<List<DrawingPoint?>> points;
   final TransformationController transformationController;
-  final ValueChanged<DragStartDetails> onPanStart;
-  final ValueChanged<DragUpdateDetails> onPanUpdate;
+  final ValueChanged<Offset> onPanStart;
+  final ValueChanged<Offset> onPanUpdate;
   final VoidCallback onPanEnd;
   final VoidCallback onZoomIn;
   final VoidCallback onZoomOut;
@@ -40,9 +40,10 @@ class _CanvasViewerState extends State<CanvasViewer> {
   bool _isMouseInside = false;
   Offset _mousePosition = Offset.zero;
 
-  void _updateMousePosition(Offset newPosition) {
+  void _updateMousePosition(Offset localPosition) {
     setState(() {
-      _mousePosition = newPosition;
+      // Convert local viewer position to unscaled scene coordinates for the cursor
+      _mousePosition = widget.transformationController.toScene(localPosition);
       _isMouseInside = true;
     });
   }
@@ -96,13 +97,15 @@ class _CanvasViewerState extends State<CanvasViewer> {
                           ? null
                           : (details) {
                         _updateMousePosition(details.localPosition);
-                        widget.onPanStart(details);
+                        final scenePoint = widget.transformationController.toScene(details.localPosition);
+                        widget.onPanStart(scenePoint);
                       },
                       onPanUpdate: widget.selectedBrush == 'hand'
                           ? null
                           : (details) {
                         _updateMousePosition(details.localPosition);
-                        widget.onPanUpdate(details);
+                        final scenePoint = widget.transformationController.toScene(details.localPosition);
+                        widget.onPanUpdate(scenePoint);
                       },
                       onPanEnd: widget.selectedBrush == 'hand'
                           ? null

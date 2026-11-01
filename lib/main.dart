@@ -216,14 +216,14 @@ class _ColoringScreenState extends State<ColoringScreen> {
                       strokeSize: _strokeSize,
                       points: _points,
                       transformationController: _transformationController,
-                      onPanStart: (details) {
+                      onPanStart: (point) {
                         setState(() {
-                          _points.add([DrawingPoint(details.localPosition, _selectedColor, _strokeSize, _selectedBrush)]);
+                          _points.add([DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush)]);
                         });
                       },
-                      onPanUpdate: (details) {
+                      onPanUpdate: (point) {
                         setState(() {
-                          _points.last.add(DrawingPoint(details.localPosition, _selectedColor, _strokeSize, _selectedBrush));
+                          _points.last.add(DrawingPoint(point, _selectedColor, _strokeSize, _selectedBrush));
                         });
                       },
                       onPanEnd: () {

@@ -6,9 +6,6 @@ class TopToolbar extends StatelessWidget {
   final ValueChanged<String> onBrushChanged;
   final double strokeSize;
   final ValueChanged<double> onSizeChanged;
-  final VoidCallback onZoomIn;
-  final VoidCallback onZoomOut;
-  final VoidCallback onResetZoom;
 
   const TopToolbar({
     super.key,
@@ -17,120 +14,109 @@ class TopToolbar extends StatelessWidget {
     required this.onBrushChanged,
     required this.strokeSize,
     required this.onSizeChanged,
-    required this.onZoomIn,
-    required this.onZoomOut,
-    required this.onResetZoom,
   });
 
-  // Map each brush type to its custom asset path in assets/icons/
   String _getBrushAssetPath(String brush) {
     switch (brush) {
       case 'crayon':
-        return 'assets/icons/crayon_icon.jpg';
+        return 'assets/icons/crayon_icon.png';
       case 'marker':
-        return 'assets/icons/marker_icon.jpg';
+        return 'assets/icons/marker_icon.png';
       case 'pencil':
-        return 'assets/icons/pencil_icon.jpg';
+        return 'assets/icons/pencil_icon.png';
       case 'watercolor':
-        return 'assets/icons/water_color_icon.jpg';
+        return 'assets/icons/water_color_icon.png';
       case 'eraser':
-        return 'assets/icons/eraser_icon.jpg';
+        return 'assets/icons/eraser_icon.png';
+      case 'hand':
+        return 'assets/icons/mover_icon.png';
       default:
-        return 'assets/icons/marker_icon.jpg';
+        return 'assets/icons/marker_icon.png';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.grey.shade100,
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          // Brush Selectors with Custom Image Assets + Labels
-          ToggleButtons(
-            isSelected: brushes.map((b) => b == selectedBrush).toList(),
-            onPressed: (index) => onBrushChanged(brushes[index]),
-            borderRadius: BorderRadius.circular(8),
-            selectedColor: Colors.white,
-            fillColor: Colors.green.shade600,
-            constraints: const BoxConstraints(minHeight: 44, minWidth: 85),
-            children: brushes.map((b) {
+      width: 90,
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border.all(color: Colors.grey.shade300, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Tools', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 6),
+            ...brushes.map((b) {
+              bool isSelected = b == selectedBrush;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Image.asset(
-                      _getBrushAssetPath(b),
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.brush, size: 20),
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: GestureDetector(
+                  onTap: () => onBrushChanged(b),
+                  child: Container(
+                    width: 74,
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.green.shade600 : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected ? Colors.green.shade800 : Colors.grey.shade300,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 3,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      b[0].toUpperCase() + b.substring(1),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          _getBrushAssetPath(b),
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.brush, size: 28),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          b[0].toUpperCase() + b.substring(1),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white : Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               );
-            }).toList(),
-          ),
-
-          // Size Slider
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Brush Size: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              SizedBox(
-                width: 120,
-                child: Slider(
-                  value: strokeSize,
-                  min: 4,
-                  max: 40,
-                  activeColor: Colors.green.shade600,
-                  onChanged: onSizeChanged,
-                ),
+            }),
+            const Divider(height: 20, thickness: 2),
+            const Text('Size', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 4),
+            SizedBox(
+              width: 75,
+              child: Slider(
+                value: strokeSize,
+                min: 4,
+                max: 40,
+                activeColor: Colors.green.shade600,
+                onChanged: selectedBrush == 'hand' ? null : onSizeChanged,
               ),
-            ],
-          ),
-
-          // Zoom Controls
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Zoom: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              IconButton(
-                icon: const Icon(Icons.zoom_out, size: 20),
-                onPressed: onZoomOut,
-                tooltip: 'Zoom Out',
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                padding: EdgeInsets.zero,
-              ),
-              IconButton(
-                icon: const Icon(Icons.zoom_in, size: 20),
-                onPressed: onZoomIn,
-                tooltip: 'Zoom In',
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                padding: EdgeInsets.zero,
-              ),
-              IconButton(
-                icon: const Icon(Icons.restart_alt, size: 20),
-                onPressed: onResetZoom,
-                tooltip: 'Reset Zoom',
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

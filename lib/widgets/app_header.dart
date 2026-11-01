@@ -17,11 +17,10 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       elevation: 2,
       title: Row(
         children: [
-          // Bella Logo on the left side of the header
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: Image.asset(
-              'assets/logo/bella_logo.png',
+              'assets/logo/paw_heart.png',
               width: 36,
               height: 36,
               fit: BoxFit.cover,

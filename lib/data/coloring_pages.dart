@@ -25,7 +25,7 @@ final List<ColoringPageItem> bellaColoringPages = [
   ),
   const ColoringPageItem(
     title: 'Yellow Energy (Fast & Rising)',
-    path: 'assets/pages/Bella Green Coloring Page.png',
+    path: 'assets/pages/Bella Yellow Coloring Page.png',
   ),
   const ColoringPageItem(
     title: 'Red Energy (Very BIG Feelings)',

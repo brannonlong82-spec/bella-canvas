@@ -29,7 +29,6 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // Updated Title
           const Text(
             'Bella Art Studio',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -37,7 +36,6 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // Download Button with a Popup Menu for Art vs Printable Page
         Padding(
           padding: const EdgeInsets.only(right: 12.0),
           child: PopupMenuButton<String>(
@@ -71,7 +69,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               ),
             ],
             child: ElevatedButton.icon(
-              onPressed: null, // Let PopupMenuButton handle tap handling via wrapper
+              onPressed: null, // PopupMenuButton handles taps on the child
               icon: const Icon(Icons.download, color: Colors.white),
               label: const Text('Download', style: TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(

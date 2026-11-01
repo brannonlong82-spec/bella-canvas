@@ -14,15 +14,7 @@ class ColoringPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ColoringPainter oldDelegate) {
-    // Only repaint if the reference to points changed, or if the number of strokes changed,
-    // or if the active stroke's point count changed.
-    if (oldDelegate.points != points) return true;
-    if (oldDelegate.points.length != points.length) return true;
-
-    if (points.isNotEmpty) {
-      if (oldDelegate.points.last.length != points.last.length) return true;
-    }
-
-    return false;
+    // Always repaint during active drawing and updates
+    return true;
   }
 }

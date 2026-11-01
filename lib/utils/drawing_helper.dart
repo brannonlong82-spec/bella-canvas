@@ -7,13 +7,10 @@ class DrawingHelper {
   static ui.Picture? _cachedPicture;
   static int _cachedStrokeCount = 0;
   static Size? _cachedSize;
+  static String? _cachedPagePath;
 
   static Offset getScenePoint(Offset localPosition, TransformationController controller) {
     return controller.toScene(localPosition);
-  }
-
-  static Offset getLocalPoint(Offset globalPosition, RenderBox renderBox) {
-    return renderBox.globalToLocal(globalPosition);
   }
 
   static void clearCache() {
@@ -21,11 +18,16 @@ class DrawingHelper {
     _cachedPicture = null;
     _cachedStrokeCount = 0;
     _cachedSize = null;
+    _cachedPagePath = null;
   }
 
-  static void paintStrokes(Canvas canvas, Size size, List<List<DrawingPoint?>> points) {
-    if (points.isEmpty) {
+  static void paintStrokes(Canvas canvas, Size size, List<List<DrawingPoint?>> points, {String? pagePath}) {
+    if (pagePath != null && _cachedPagePath != pagePath) {
       clearCache();
+      _cachedPagePath = pagePath;
+    }
+
+    if (points.isEmpty) {
       return;
     }
 
@@ -58,7 +60,6 @@ class DrawingHelper {
 
   static void _drawStrokeSequence(Canvas canvas, List<DrawingPoint?> stroke) {
     if (stroke.isEmpty) return;
-
     final firstPoint = stroke.first;
     if (firstPoint == null) return;
 
@@ -71,7 +72,6 @@ class DrawingHelper {
 
       if (p1 == null || p2 == null) continue;
 
-      // Use BlendMode.darken so colors sit naturally on top of the white background
       if (brushType == 'crayon') {
         _drawCrayonSegment(canvas, p1, p2, j);
       } else if (brushType == 'marker') {

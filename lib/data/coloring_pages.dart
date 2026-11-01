@@ -44,6 +44,10 @@ final List<ColoringPageItem> bellaColoringPages = [
     path: 'assets/pages/Bella Maze Tool Box.png',
   ),
   const ColoringPageItem(
+    title: 'Bella Word Find',
+    path: 'assets/pages/Bella Word Find.png',
+  ),
+  const ColoringPageItem(
     title: 'Bella Maze: Comfort Toy',
     path: 'assets/pages/Bella Maze Toy.png',
   ),
